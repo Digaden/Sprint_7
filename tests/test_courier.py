@@ -6,6 +6,7 @@ from helpers import register_new_courier_and_return_login_password
 class TestCourierManagement:
     @allure.feature("Courier management")
     @allure.story("Create courier")
+    @allure.title("Create courier: успешное создание")
     def test_create_courier_success(self, client):
         login_pass = register_new_courier_and_return_login_password()
         assert login_pass is not None and len(login_pass) == 3
@@ -17,13 +18,16 @@ class TestCourierManagement:
             "firstName": firstName
         }
 
-        resp = client.post(COURIER_URL, data=payload)
-        assert resp.status_code == 201, f"Oжидался код 201, получено {resp.status_code}"
-        data = resp.json()
-        assert data.get("ok") is True
+        with allure.step("Create courier via API"):
+            resp = client.post(COURIER_URL, data=payload)
+        with allure.step("Validate creation response"):
+            assert resp.status_code == 201, f"Oжидался код 201, получено {resp.status_code}"
+            data = resp.json()
+            assert data.get("ok") is True
 
     @allure.feature("Courier management")
     @allure.story("Create courier")
+    @allure.title("Create courier: дубликат вызывает ошибку")
     def test_create_duplicate_courier(self, client):
         login_pass = register_new_courier_and_return_login_password()
         assert login_pass is not None and len(login_pass) == 3
@@ -34,8 +38,19 @@ class TestCourierManagement:
             "password": password,
             "firstName": firstName
         }
-        resp = client.post(COURIER_URL, data=payload)
-        assert resp.status_code in (400, 409), f"Ожидалась ошибка дубликата (400/409), получено {resp.status_code}"
+
+        with allure.step("Create courier (первый раз)"):
+            resp = client.post(COURIER_URL, data=payload)
+        with allure.step("Попытка создать дубликат"):
+            resp2 = client.post(COURIER_URL, data=payload)
+
+        with allure.step("Validate duplicate response"):
+            assert resp2.status_code in (400, 409)
+            try:
+                body = resp2.json()
+                assert isinstance(body, dict)
+            except ValueError:
+                assert resp2.text
 
     @allure.feature("Courier management")
     @allure.story("Create courier")
@@ -44,6 +59,14 @@ class TestCourierManagement:
         {"login": "user12345", "firstName": "John"},     # без password
         {"login": "user12345", "password": "pass12345"}  # без firstName
     ])
+    @allure.title("Create courier with missing fields should fail")
     def test_create_courier_missing_fields(self, client, payload):
-        resp = client.post(COURIER_URL, data=payload)
-        assert resp.status_code in (400, 422)
+        with allure.step(f"Attempt to create courier with payload={payload}"):
+            resp = client.post(COURIER_URL, data=payload)
+        with allure.step("Validate error response"):
+            assert resp.status_code in (400, 422)
+            try:
+                body = resp.json()
+                assert isinstance(body, dict)
+            except ValueError:
+                assert resp.text
