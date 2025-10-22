@@ -30,10 +30,10 @@ class TestCourierAuth:
             assert resp.status_code in (400, 422)
             try:
                 body = resp.json()
-                assert isinstance(body, dict)
-                assert any(k in body for k in ("message", "error"))
+                message_text = body.get("message", "")
+                assert isinstance(message_text, str) and message_text.strip()
             except ValueError:
-                assert resp.text
+                pytest.fail("Expected JSON с полем 'message' в ответе об ошибке")
 
     @allure.feature("Courier authentication")
     @allure.title("Login wrong credentials: корректная обработка тела ответа")
@@ -47,7 +47,7 @@ class TestCourierAuth:
             assert resp.status_code in (400, 401, 403, 404)
             try:
                 body = resp.json()
-                assert isinstance(body, dict)
-                assert any(k in body for k in ("message", "error"))
+                message_text = body.get("message", "")
+                assert isinstance(message_text, str) and message_text.strip()
             except ValueError:
-                assert resp.text
+                pytest.fail("Expected JSON с полем 'message' в ответе об ошибке")
